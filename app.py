@@ -1364,7 +1364,7 @@ def auth_facebook_callback():
         profile_response = http_requests.get(
             "https://graph.facebook.com/me",
             params={
-                "fields": "id,name,email,picture.type(large)",
+                "fields": "id,name,picture.type(large)",
                 "access_token": access_token
             }
         )

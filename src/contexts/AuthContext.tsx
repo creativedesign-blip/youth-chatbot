@@ -125,7 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           `client_id=${authConfig.facebook.app_id}&` +
           `redirect_uri=${encodeURIComponent(authConfig.facebook.redirect_uri)}&` +
           `state=${state}&` +
-          `scope=public_profile,email`;
+          `scope=public_profile`;
         break;
     }
 
