@@ -41,6 +41,7 @@ load_dotenv()  # Load .env
 load_dotenv(".env.local")  # Override with .env.local if exists
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DIST_DIR = os.path.join(BASE_DIR, "dist")
 
 
 def _default_storage_base() -> str:
@@ -1142,8 +1143,32 @@ SURVEY_TEMPLATE = """
 
 @app.get("/")
 def index():
-    """Serve the index.html file"""
+    """Serve the index.html file from dist directory in production, or BASE_DIR in development"""
+    # 优先从 dist 目录提供（生产环境），否则从 BASE_DIR（开发环境）
+    dist_index = os.path.join(DIST_DIR, "index.html")
+    if os.path.exists(dist_index):
+        return send_from_directory(DIST_DIR, "index.html")
     return send_from_directory(BASE_DIR, "index.html")
+
+
+@app.route("/<path:path>")
+def serve_static(path: str):
+    """Serve static files from dist directory"""
+    # 检查是否是 API 路由，如果是则跳过
+    if path.startswith("api/") or path.startswith("__") or path.startswith("survey/"):
+        abort(404)
+    
+    # 优先从 dist 目录提供静态文件
+    dist_path = os.path.join(DIST_DIR, path)
+    if os.path.exists(dist_path) and os.path.isfile(dist_path):
+        return send_from_directory(DIST_DIR, path)
+    
+    # 如果文件不存在，返回 index.html（用于 SPA 路由）
+    dist_index = os.path.join(DIST_DIR, "index.html")
+    if os.path.exists(dist_index):
+        return send_from_directory(DIST_DIR, "index.html")
+    
+    abort(404)
 
 
 @app.get("/health")
