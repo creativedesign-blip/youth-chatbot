@@ -62,10 +62,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchAuthConfig = useCallback(async () => {
     console.log('[AuthContext] fetchAuthConfig starting...');
     try {
-      const response = await fetch('/api/auth/config');
-      console.log('[AuthContext] /api/auth/config response status:', response.status);
+      const response = await fetch('/auth/config');
+      console.log('[AuthContext] /auth/config response status:', response.status);
       const data = await response.json();
-      console.log('[AuthContext] /api/auth/config data:', data);
+      console.log('[AuthContext] /auth/config data:', data);
       setAuthConfig(data);
     } catch (error) {
       console.error('[AuthContext] fetchAuthConfig error:', error);

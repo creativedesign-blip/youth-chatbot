@@ -123,15 +123,15 @@ CORS(
 # OAuth Configuration
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
-GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:8300/api/auth/google/callback")
+GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:8300/auth/google/callback")
 
 LINE_CHANNEL_ID = os.getenv("LINE_CHANNEL_ID")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
-LINE_REDIRECT_URI = os.getenv("LINE_REDIRECT_URI", "http://localhost:8300/api/auth/line/callback")
+LINE_REDIRECT_URI = os.getenv("LINE_REDIRECT_URI", "http://localhost:8300/auth/line/callback")
 
 FACEBOOK_APP_ID = os.getenv("FACEBOOK_APP_ID")
 FACEBOOK_APP_SECRET = os.getenv("FACEBOOK_APP_SECRET")
-FACEBOOK_REDIRECT_URI = os.getenv("FACEBOOK_REDIRECT_URI", "http://localhost:8300/api/auth/facebook/callback")
+FACEBOOK_REDIRECT_URI = os.getenv("FACEBOOK_REDIRECT_URI", "http://localhost:8300/auth/facebook/callback")
 
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -1178,7 +1178,7 @@ def health() -> tuple[str, int]:
 
 # ==================== OAuth Routes ====================
 
-@app.get("/api/auth/config")
+@app.get("/auth/config")
 def api_auth_config():
     """Return OAuth configuration for frontend (without secrets)."""
     return jsonify({
@@ -1200,7 +1200,7 @@ def api_auth_config():
     })
 
 
-@app.get("/api/auth/google/callback")
+@app.get("/auth/google/callback")
 def auth_google_callback():
     """Handle Google OAuth callback."""
     code = request.args.get("code")
@@ -1265,7 +1265,7 @@ def auth_google_callback():
         return redirect("/?error=google_token_exchange_failed")
 
 
-@app.get("/api/auth/line/callback")
+@app.get("/auth/line/callback")
 def auth_line_callback():
     """Handle LINE OAuth callback."""
     code = request.args.get("code")
@@ -1330,7 +1330,6 @@ def auth_line_callback():
 
 
 @app.get("/auth/facebook/callback")
-@app.get("/api/auth/facebook/callback")
 def auth_facebook_callback():
     """Handle Facebook OAuth callback."""
     code = request.args.get("code")
