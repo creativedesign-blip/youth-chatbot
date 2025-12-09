@@ -131,7 +131,7 @@ LINE_REDIRECT_URI = os.getenv("LINE_REDIRECT_URI", "http://localhost:8300/api/au
 
 FACEBOOK_APP_ID = os.getenv("FACEBOOK_APP_ID")
 FACEBOOK_APP_SECRET = os.getenv("FACEBOOK_APP_SECRET")
-FACEBOOK_REDIRECT_URI = os.getenv("FACEBOOK_REDIRECT_URI", "http://localhost:8300/api/auth/facebook/callback")
+FACEBOOK_REDIRECT_URI = os.getenv("FACEBOOK_REDIRECT_URI", "http://localhost:8300/auth/facebook/callback")
 
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -1329,6 +1329,7 @@ def auth_line_callback():
         return redirect("/?error=line_token_exchange_failed")
 
 
+@app.get("/auth/facebook/callback")
 @app.get("/api/auth/facebook/callback")
 def auth_facebook_callback():
     """Handle Facebook OAuth callback."""
