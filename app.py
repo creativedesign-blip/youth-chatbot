@@ -1330,7 +1330,6 @@ def auth_line_callback():
 
 
 @app.get("/auth/facebook/callback")
-@app.get("/api/auth/facebook/callback")
 def auth_facebook_callback():
     """Handle Facebook OAuth callback."""
     code = request.args.get("code")
