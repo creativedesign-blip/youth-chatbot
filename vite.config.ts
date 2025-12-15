@@ -53,6 +53,12 @@
     build: {
       target: 'esnext',
       outDir: 'dist',
+      rollupOptions: {
+        input: {
+          main: path.resolve(__dirname, 'index.html'),
+          admin: path.resolve(__dirname, 'admin.html'),
+        },
+      },
     },
     server: {
       host: 'localhost',
@@ -66,12 +72,18 @@
       proxy: {
         '/api': {
           target: 'http://127.0.0.1:8300',
-          changeOrigin: true,
+          // Keep origin as the frontend host so Flask sets cookies for "localhost"
+          changeOrigin: false,
           secure: false
         },
         '/auth': {
           target: 'http://127.0.0.1:8300',
-          changeOrigin: true,
+          changeOrigin: false,
+          secure: false
+        },
+        '/uploads': {
+          target: 'http://127.0.0.1:8300',
+          changeOrigin: false,
           secure: false
         }
       }

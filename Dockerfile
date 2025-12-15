@@ -36,11 +36,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY --from=frontend-builder /app/dist ./dist
 
 # 复制后端源代码
-COPY app.py gemini_service.py ./
+COPY app.py gemini_service.py gcs_service.py ./
 COPY rag_data ./rag_data/
-
-# 创建必要的目录
-RUN mkdir -p uploads
 
 # 设置环境变量
 ENV PORT=8080

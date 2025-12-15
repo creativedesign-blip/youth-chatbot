@@ -8,6 +8,7 @@ import logging
 import os
 import secrets
 import uuid
+from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
 import requests as http_requests
@@ -28,6 +29,11 @@ from flask_cors import CORS
 from sqlalchemy import create_engine, event, text
 from sqlalchemy.engine import Engine
 
+from functools import wraps
+
+load_dotenv()  # Load .env
+load_dotenv(".env.local")  # Override with .env.local if exists
+
 from gemini_service import (
     initialize_client as init_gemini_client,
     initialize_rag_store,
@@ -35,10 +41,16 @@ from gemini_service import (
     get_rag_store_name,
     generate_with_rag_stream,
 )
+USE_MOCK_GCS = os.getenv("USE_MOCK_GCS", "0") in {"1", "true", "True"}
 
-
-load_dotenv()  # Load .env
-load_dotenv(".env.local")  # Override with .env.local if exists
+if USE_MOCK_GCS:
+    from local import mock_gcs_service as mock_gcs
+else:
+    from gcs_service import (
+        init_gcs_client,
+        upload_hero_image as gcs_upload_hero_image,
+        delete_hero_image as gcs_delete_hero_image,
+    )
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DIST_DIR = os.path.join(BASE_DIR, "dist")
@@ -135,6 +147,10 @@ FACEBOOK_REDIRECT_URI = os.getenv("FACEBOOK_REDIRECT_URI", "http://localhost:830
 
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
+# Admin Configuration
+ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
 
 
 SYSTEM_PROMPT = (
@@ -324,6 +340,31 @@ def ensure_schema() -> None:
                 """
             )
         )
+        # Hero Images table for banner carousel
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS hero_images (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    gcs_object_name TEXT NOT NULL UNIQUE,
+                    gcs_public_url TEXT NOT NULL,
+                    display_order INTEGER DEFAULT 0,
+                    alt_text TEXT,
+                    is_active INTEGER DEFAULT 1,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                CREATE INDEX IF NOT EXISTS idx_hero_images_active_order
+                ON hero_images(is_active, display_order)
+                """
+            )
+        )
 
 
 ensure_schema()
@@ -344,6 +385,278 @@ def initialize_gemini_rag():
 
 
 initialize_gemini_rag()
+
+# Initialize GCS client (or local mock) at startup
+if USE_MOCK_GCS:
+    LOCAL_GCS_DIR = Path(os.getenv("LOCAL_GCS_DIR") or ASSET_LOCAL_DIR)
+
+    def init_gcs_client() -> bool:
+        mock_gcs.init_local_bucket(LOCAL_GCS_DIR)
+        return True
+
+    def gcs_upload_hero_image(file_data: bytes, filename: str, content_type: str = "image/jpeg"):
+        success, object_name, _ = mock_gcs.upload_hero_image(
+            file_data, filename, content_type=content_type, base_dir=LOCAL_GCS_DIR
+        )
+        public_url = f"{ASSET_ROUTE_PREFIX}/{object_name}"
+        return success, object_name, public_url
+
+    def gcs_delete_hero_image(object_name: str) -> bool:
+        return mock_gcs.delete_hero_image(object_name, base_dir=LOCAL_GCS_DIR)
+
+init_gcs_client()
+
+
+# ========== Admin Authentication ==========
+
+def admin_required(f):
+    """Decorator to require admin authentication."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get("is_admin"):
+            return jsonify({"success": False, "error": "未授權"}), 401
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+@app.post("/api/admin/login")
+def admin_login():
+    """Admin login endpoint."""
+    if not ADMIN_PASSWORD:
+        return jsonify({"success": False, "error": "管理員密碼未設定"}), 500
+
+    data = request.get_json() or {}
+    username = (data.get("username") or "").strip()
+    password = data.get("password") or ""
+
+    if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+        session["is_admin"] = True
+        session.permanent = True
+        return jsonify({"success": True, "message": "登入成功"})
+
+    return jsonify({"success": False, "error": "帳號或密碼錯誤"}), 401
+
+
+@app.post("/api/admin/logout")
+def admin_logout():
+    """Admin logout endpoint."""
+    session.pop("is_admin", None)
+    return jsonify({"success": True, "message": "已登出"})
+
+
+@app.get("/api/admin/check")
+def admin_check():
+    """Check admin authentication status."""
+    if session.get("is_admin"):
+        return jsonify({"success": True, "authenticated": True})
+    return jsonify({"success": False, "authenticated": False}), 401
+
+
+# ========== Hero Images API ==========
+
+@app.get("/api/hero-images")
+def get_hero_images():
+    """Get all active hero images (public endpoint)."""
+    with engine.begin() as conn:
+        rows = conn.execute(
+            text(
+                """
+                SELECT id, gcs_public_url as url, alt_text, display_order
+                FROM hero_images
+                WHERE is_active = 1
+                ORDER BY display_order ASC
+                """
+            )
+        ).mappings().all()
+
+    images = [dict(row) for row in rows]
+    return jsonify({"success": True, "images": images})
+
+
+@app.get("/api/admin/hero-images")
+@admin_required
+def admin_get_hero_images():
+    """Get all hero images (admin endpoint)."""
+    with engine.begin() as conn:
+        rows = conn.execute(
+            text(
+                """
+                SELECT id, gcs_object_name, gcs_public_url as url, alt_text,
+                       display_order, is_active, created_at, updated_at
+                FROM hero_images
+                ORDER BY display_order ASC
+                """
+            )
+        ).mappings().all()
+
+    images = [dict(row) for row in rows]
+    return jsonify({"success": True, "images": images})
+
+
+@app.post("/api/admin/hero-images")
+@admin_required
+def admin_upload_hero_image():
+    """Upload a new hero image."""
+    if "file" not in request.files:
+        return jsonify({"success": False, "error": "未提供檔案"}), 400
+
+    file = request.files["file"]
+    if not file.filename:
+        return jsonify({"success": False, "error": "檔案名稱為空"}), 400
+
+    # Validate file type
+    allowed_types = {"image/jpeg", "image/png", "image/webp"}
+    if file.content_type not in allowed_types:
+        return jsonify({"success": False, "error": "只支援 JPG、PNG、WebP 格式"}), 400
+
+    # Check file size (max 5MB)
+    file_data = file.read()
+    if len(file_data) > 5 * 1024 * 1024:
+        return jsonify({"success": False, "error": "檔案大小不能超過 5MB"}), 400
+
+    # Upload to GCS
+    success, object_name, public_url = gcs_upload_hero_image(
+        file_data, file.filename, file.content_type
+    )
+
+    if not success:
+        return jsonify({"success": False, "error": "上傳失敗"}), 500
+
+    # Get alt_text from form
+    alt_text = request.form.get("alt_text", "")
+
+    # Get next display order
+    with engine.begin() as conn:
+        result = conn.execute(
+            text("SELECT COALESCE(MAX(display_order), -1) + 1 as next_order FROM hero_images")
+        ).mappings().first()
+        next_order = result["next_order"] if result else 0
+
+        # Check if we already have 8 images
+        count_result = conn.execute(
+            text("SELECT COUNT(*) as count FROM hero_images")
+        ).mappings().first()
+        if count_result and count_result["count"] >= 8:
+            # Delete the uploaded file since we can't add more
+            gcs_delete_hero_image(object_name)
+            return jsonify({"success": False, "error": "最多只能上傳 8 張圖片"}), 400
+
+        # Insert into database
+        now = utcnow()
+        conn.execute(
+            text(
+                """
+                INSERT INTO hero_images (gcs_object_name, gcs_public_url, alt_text, display_order, created_at, updated_at)
+                VALUES (:object_name, :url, :alt_text, :order, :now, :now)
+                """
+            ),
+            {
+                "object_name": object_name,
+                "url": public_url,
+                "alt_text": alt_text,
+                "order": next_order,
+                "now": now,
+            },
+        )
+
+        # Get the inserted image
+        inserted = conn.execute(
+            text("SELECT id, gcs_public_url as url, alt_text, display_order FROM hero_images WHERE gcs_object_name = :name"),
+            {"name": object_name}
+        ).mappings().first()
+
+    return jsonify({
+        "success": True,
+        "image": dict(inserted) if inserted else None
+    })
+
+
+@app.delete("/api/admin/hero-images/<int:image_id>")
+@admin_required
+def admin_delete_hero_image(image_id: int):
+    """Delete a hero image."""
+    with engine.begin() as conn:
+        # Get the image first
+        image = conn.execute(
+            text("SELECT gcs_object_name FROM hero_images WHERE id = :id"),
+            {"id": image_id}
+        ).mappings().first()
+
+        if not image:
+            return jsonify({"success": False, "error": "圖片不存在"}), 404
+
+        # Delete from GCS first; if it fails, do not remove DB record to avoid drift
+        deleted = gcs_delete_hero_image(image["gcs_object_name"])
+        if not deleted:
+            return jsonify({"success": False, "error": "刪除雲端檔案失敗，請稍後再試"}), 502
+
+        # Delete from database
+        conn.execute(
+            text("DELETE FROM hero_images WHERE id = :id"),
+            {"id": image_id}
+        )
+
+    return jsonify({"success": True, "message": "已刪除"})
+
+
+@app.put("/api/admin/hero-images/reorder")
+@admin_required
+def admin_reorder_hero_images():
+    """Reorder hero images."""
+    data = request.get_json() or {}
+    order = data.get("order", [])  # List of image IDs in new order
+
+    if not isinstance(order, list):
+        return jsonify({"success": False, "error": "order 必須是陣列"}), 400
+
+    with engine.begin() as conn:
+        for idx, image_id in enumerate(order):
+            conn.execute(
+                text(
+                    """
+                    UPDATE hero_images
+                    SET display_order = :order, updated_at = :now
+                    WHERE id = :id
+                    """
+                ),
+                {"order": idx, "id": image_id, "now": utcnow()}
+            )
+
+    return jsonify({"success": True, "message": "排序已更新"})
+
+
+@app.put("/api/admin/hero-images/<int:image_id>")
+@admin_required
+def admin_update_hero_image(image_id: int):
+    """Update hero image metadata."""
+    data = request.get_json() or {}
+
+    updates = []
+    params = {"id": image_id, "now": utcnow()}
+
+    if "alt_text" in data:
+        updates.append("alt_text = :alt_text")
+        params["alt_text"] = data["alt_text"]
+
+    if "is_active" in data:
+        updates.append("is_active = :is_active")
+        params["is_active"] = 1 if data["is_active"] else 0
+
+    if not updates:
+        return jsonify({"success": False, "error": "沒有要更新的欄位"}), 400
+
+    updates.append("updated_at = :now")
+
+    with engine.begin() as conn:
+        result = conn.execute(
+            text(f"UPDATE hero_images SET {', '.join(updates)} WHERE id = :id"),
+            params
+        )
+
+        if result.rowcount == 0:
+            return jsonify({"success": False, "error": "圖片不存在"}), 404
+
+    return jsonify({"success": True, "message": "已更新"})
 
 
 def ensure_chat_session(session_id: Optional[str] = None) -> str:
@@ -1253,8 +1566,7 @@ def auth_google_callback():
             "provider": "google",
             "external_id": f"google_{user_info['id']}",
             "email": user_info.get("email"),
-            "name": user_info.get("name"),
-            "picture": user_info.get("picture")
+            "name": user_info.get("name")
         }
         session.permanent = True
 
@@ -1317,8 +1629,7 @@ def auth_line_callback():
             "member_id": member_id,
             "provider": "line",
             "external_id": f"line_{profile['userId']}",
-            "name": profile.get("displayName"),
-            "picture": profile.get("pictureUrl")
+            "name": profile.get("displayName")
         }
         session.permanent = True
 
@@ -1388,8 +1699,7 @@ def auth_facebook_callback():
             "provider": "facebook",
             "external_id": f"facebook_{profile['id']}",
             "email": profile.get("email"),
-            "name": profile.get("name"),
-            "picture": picture_url
+            "name": profile.get("name")
         }
         session.permanent = True
 
@@ -1404,9 +1714,18 @@ def auth_facebook_callback():
 def api_get_user():
     """Return current authenticated user or 401."""
     if "user" in session:
+        user_data = session["user"].copy()
+        # 從資料庫讀取頭像 (避免 session cookie 過大導致 431 錯誤)
+        if user_data.get("member_id"):
+            member = fetchone(
+                "SELECT avatar_url FROM members WHERE id = :id",
+                {"id": user_data["member_id"]}
+            )
+            if member:
+                user_data["picture"] = member.get("avatar_url")
         return jsonify({
             "success": True,
-            "user": session["user"]
+            "user": user_data
         })
     return jsonify({
         "success": False,
