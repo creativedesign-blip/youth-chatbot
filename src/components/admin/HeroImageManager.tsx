@@ -324,11 +324,12 @@ export function HeroImageManager({ onLogout }: HeroImageManagerProps) {
               {/* 圖片預覽區 */}
               <div className="mb-5">
                 {previewUrl ? (
-                  <div className="relative group">
+                  <div className="relative group" style={{ maxHeight: '150px', overflow: 'hidden' }}>
                     <img
                       src={previewUrl}
                       alt="預覽"
-                      className="w-full h-40 object-cover rounded-lg border"
+                      style={{ maxHeight: '150px' }}
+                      className="w-full object-contain rounded-lg border bg-gray-50"
                     />
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
                       <button
@@ -343,18 +344,19 @@ export function HeroImageManager({ onLogout }: HeroImageManagerProps) {
                     </div>
                   </div>
                 ) : currentImage && !isNewSlot ? (
-                  <div className="relative group">
+                  <div className="relative group" style={{ maxHeight: '150px', overflow: 'hidden' }}>
                     <img
                       src={currentImage.url}
                       alt={currentImage.alt_text || "輪播圖片"}
-                      className="w-full h-40 object-cover rounded-lg border"
+                      style={{ maxHeight: '150px' }}
+                      className="w-full object-contain rounded-lg border bg-gray-50"
                     />
                     <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/60 text-white text-xs rounded">
                       {currentImage.alt_text || `輪播 ${activeTab + 1}`}
                     </div>
                   </div>
                 ) : (
-                  <div className="w-full h-40 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-2">
+                  <div className="w-full h-32 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-2">
                     <Image size={32} className="text-gray-300" />
                     <p className="text-gray-400 text-sm">尚未選擇圖片</p>
                   </div>
