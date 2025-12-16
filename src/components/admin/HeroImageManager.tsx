@@ -290,9 +290,10 @@ export function HeroImageManager({ onLogout }: HeroImageManagerProps) {
                     color: '#2563eb',
                     border: '2px dashed #93c5fd',
                   }}
-                  className="w-full flex items-center justify-center px-2 py-2 rounded-md hover:bg-blue-50 transition-all"
+                  className="w-full flex items-center justify-center gap-1 px-2 py-2 rounded-md hover:bg-blue-50 transition-all"
                 >
                   <Plus size={14} style={{ color: '#3b82f6' }} />
+                  <span className="text-xs font-medium" style={{ color: '#3b82f6' }}>新增輪播</span>
                 </button>
               )}
             </div>
