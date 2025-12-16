@@ -190,181 +190,192 @@ export function HeroImageManager({ onLogout }: HeroImageManagerProps) {
   const displayTabs = isNewSlot ? images.length + 1 : images.length;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen" style={{ backgroundColor: '#f8fafc' }}>
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+      <header style={{ backgroundColor: '#ffffff', borderBottom: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-bold text-gray-800">
+            <h1 className="text-xl font-bold" style={{ color: '#1e293b' }}>
               Hero Banner 管理
             </h1>
-            <p className="text-xs text-gray-500">桃園市政府青年事務局</p>
+            <p className="text-sm" style={{ color: '#64748b' }}>桃園市政府青年事務局</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <button
               onClick={() => fetchImages()}
               disabled={isLoading}
-              className="p-2 text-gray-500 hover:bg-gray-100 rounded-full disabled:opacity-50"
+              className="p-2.5 rounded-lg transition-all disabled:opacity-50"
+              style={{ color: '#64748b', backgroundColor: isLoading ? '#f1f5f9' : 'transparent' }}
               title="重新整理"
             >
-              <RefreshCw size={18} className={isLoading ? "animate-spin" : ""} />
+              <RefreshCw size={20} className={isLoading ? "animate-spin" : ""} />
             </button>
             <button
               onClick={handleLogout}
-              className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-md"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all"
+              style={{ color: '#64748b', backgroundColor: '#f1f5f9' }}
             >
-              <LogOut size={16} />
-              <span>登出</span>
+              <LogOut size={18} />
+              <span className="text-sm font-medium">登出</span>
             </button>
           </div>
         </div>
       </header>
 
       {/* Content */}
-      <main className="max-w-2xl mx-auto px-4 py-6">
+      <main className="max-w-5xl mx-auto px-6 py-8">
         {error && (
-          <div className="mb-4 bg-red-50 text-red-600 p-3 rounded-lg text-sm flex items-center justify-between">
-            <span>{error}</span>
-            <button onClick={() => setError("")} className="text-red-400 hover:text-red-600">
-              <X size={16} />
+          <div className="mb-6 p-4 rounded-xl flex items-center justify-between" style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca' }}>
+            <span style={{ color: '#dc2626' }}>{error}</span>
+            <button onClick={() => setError("")} style={{ color: '#f87171' }}>
+              <X size={18} />
             </button>
           </div>
         )}
 
-        {/* 編輯標題 */}
-        <div className="mb-4">
-          <p className="text-orange-500 font-medium text-sm">
-            正在編輯：輪播 {activeTab + 1} / {Math.max(displayTabs, 1)}
-          </p>
-        </div>
-
-        {/* 主要內容區 - 左右佈局 */}
-        <div className="flex gap-6">
-          {/* 左側 - 輪播列表 */}
-          <div className="flex-shrink-0" style={{ width: '140px' }}>
-            <div className="space-y-1.5">
-              {/* 現有圖片的 tabs */}
-              {images.map((img, index) => {
-                const isActive = activeTab === index;
-                return (
-                  <button
-                    key={img.id}
-                    onClick={() => {
-                      setActiveTab(index);
-                      setSelectedFile(null);
-                      setPreviewUrl(null);
-                    }}
-                    style={{
-                      backgroundColor: isActive ? '#f97316' : '#ffffff',
-                      color: isActive ? '#ffffff' : '#374151',
-                      border: isActive ? 'none' : '1px solid #e5e7eb',
-                    }}
-                    className="w-full px-2 py-2 rounded-md text-center transition-all shadow-sm hover:opacity-90"
-                  >
-                    <span className="font-medium text-xs">
-                      輪播{index + 1}
-                    </span>
-                  </button>
-                );
-              })}
-
-              {/* 新增 tab（如果正在新增） */}
-              {isNewSlot && (
-                <button
-                  style={{
-                    backgroundColor: '#f97316',
-                    color: '#ffffff',
-                  }}
-                  className="w-full px-2 py-2 rounded-md text-center shadow-md"
-                >
-                  <span className="font-medium text-xs">輪播{images.length + 1}</span>
-                </button>
-              )}
-
-              {/* 新增按鈕 - 當有已上傳圖片且未在新增模式時顯示 */}
-              {canAddMore && images.length > 0 && !isNewSlot && (
-                <button
-                  onClick={handleAddNewSlot}
-                  style={{
-                    backgroundColor: '#ffffff',
-                    color: '#2563eb',
-                    border: '2px dashed #93c5fd',
-                  }}
-                  className="w-full flex items-center justify-center gap-1 px-2 py-2 rounded-md hover:bg-blue-50 transition-all"
-                >
-                  <Plus size={14} style={{ color: '#3b82f6' }} />
-                  <span className="text-xs font-medium" style={{ color: '#3b82f6' }}>新增輪播</span>
-                </button>
-              )}
-            </div>
-
-            {/* 圖片數量提示 */}
-            <div className="mt-4 text-xs text-gray-400 text-center">
-              {images.length} / {MAX_IMAGES} 張
+        {/* 主要內容區 - 卡片式設計 */}
+        <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: '#ffffff', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)' }}>
+          {/* 卡片標題 */}
+          <div className="px-6 py-4" style={{ borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#f97316' }}>
+                  <Image size={20} style={{ color: '#ffffff' }} />
+                </div>
+                <div>
+                  <h2 className="font-semibold" style={{ color: '#1e293b' }}>輪播圖片管理</h2>
+                  <p className="text-sm" style={{ color: '#64748b' }}>
+                    正在編輯：輪播 {activeTab + 1} / {Math.max(displayTabs, 1)}
+                  </p>
+                </div>
+              </div>
+              <div className="px-3 py-1.5 rounded-full text-sm font-medium" style={{ backgroundColor: '#fff7ed', color: '#ea580c' }}>
+                {images.length} / {MAX_IMAGES} 張
+              </div>
             </div>
           </div>
 
-          {/* 右側 - 圖片編輯區 */}
-          <div className="flex-1">
-            <div className="bg-white rounded-xl shadow-sm border p-5">
-              {/* 選擇圖片標題 */}
-              <div className="flex items-center gap-2 mb-4">
-                <input
-                  type="checkbox"
-                  id="selectImage"
-                  checked={true}
-                  readOnly
-                  className="w-4 h-4 text-blue-600 rounded border-gray-300"
-                />
-                <label htmlFor="selectImage" className="text-sm font-medium text-gray-700">
-                  選擇圖片
-                </label>
-              </div>
+          <div className="flex">
+            {/* 左側 - 輪播列表 */}
+            <div className="w-48 p-4" style={{ borderRight: '1px solid #e2e8f0', backgroundColor: '#fafafa' }}>
+              <p className="text-xs font-medium mb-3 px-2" style={{ color: '#94a3b8' }}>輪播列表</p>
+              <div className="space-y-2">
+                {/* 現有圖片的 tabs */}
+                {images.map((img, index) => {
+                  const isActive = activeTab === index;
+                  return (
+                    <button
+                      key={img.id}
+                      onClick={() => {
+                        setActiveTab(index);
+                        setSelectedFile(null);
+                        setPreviewUrl(null);
+                      }}
+                      style={{
+                        backgroundColor: isActive ? '#f97316' : '#ffffff',
+                        color: isActive ? '#ffffff' : '#374151',
+                        border: isActive ? 'none' : '1px solid #e5e7eb',
+                        boxShadow: isActive ? '0 4px 6px -1px rgba(249, 115, 22, 0.3)' : '0 1px 2px rgba(0,0,0,0.05)',
+                      }}
+                      className="w-full px-4 py-3 rounded-xl text-left transition-all hover:scale-[1.02]"
+                    >
+                      <span className="font-medium text-sm">輪播 {index + 1}</span>
+                    </button>
+                  );
+                })}
 
-              {/* 圖片預覽區 */}
-              <div className="mb-5">
-                {previewUrl ? (
-                  <div className="relative group" style={{ maxHeight: '150px', overflow: 'hidden' }}>
-                    <img
-                      src={previewUrl}
-                      alt="預覽"
-                      style={{ maxHeight: '150px' }}
-                      className="w-full object-contain rounded-lg border bg-gray-50"
-                    />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
-                      <button
-                        onClick={cancelPreview}
-                        className="p-2 bg-white rounded-full shadow hover:bg-gray-100"
-                      >
-                        <X size={18} className="text-gray-700" />
-                      </button>
-                    </div>
-                    <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/60 text-white text-xs rounded">
-                      新圖片預覽
-                    </div>
-                  </div>
-                ) : currentImage && !isNewSlot ? (
-                  <div className="relative group" style={{ maxHeight: '150px', overflow: 'hidden' }}>
-                    <img
-                      src={currentImage.url}
-                      alt={currentImage.alt_text || "輪播圖片"}
-                      style={{ maxHeight: '150px' }}
-                      className="w-full object-contain rounded-lg border bg-gray-50"
-                    />
-                    <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/60 text-white text-xs rounded">
-                      {currentImage.alt_text || `輪播 ${activeTab + 1}`}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="w-full h-32 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-2">
-                    <Image size={32} className="text-gray-300" />
-                    <p className="text-gray-400 text-sm">尚未選擇圖片</p>
-                  </div>
+                {/* 新增 tab（如果正在新增） */}
+                {isNewSlot && (
+                  <button
+                    style={{
+                      backgroundColor: '#f97316',
+                      color: '#ffffff',
+                      boxShadow: '0 4px 6px -1px rgba(249, 115, 22, 0.3)',
+                    }}
+                    className="w-full px-4 py-3 rounded-xl text-left"
+                  >
+                    <span className="font-medium text-sm">輪播 {images.length + 1}</span>
+                  </button>
+                )}
+
+                {/* 新增按鈕 */}
+                {canAddMore && images.length > 0 && !isNewSlot && (
+                  <button
+                    onClick={handleAddNewSlot}
+                    style={{
+                      backgroundColor: '#ffffff',
+                      border: '2px dashed #93c5fd',
+                    }}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl transition-all hover:bg-blue-50"
+                  >
+                    <Plus size={16} style={{ color: '#3b82f6' }} />
+                    <span className="text-sm font-medium" style={{ color: '#3b82f6' }}>新增輪播</span>
+                  </button>
                 )}
               </div>
+            </div>
 
-              {/* 上傳按鈕 */}
-              <div className="space-y-3">
+            {/* 右側 - 圖片編輯區 */}
+            <div className="flex-1 p-6">
+              {/* 圖片預覽區 - 固定比例容器 */}
+              <div className="mb-6">
+                <p className="text-sm font-medium mb-3" style={{ color: '#374151' }}>圖片預覽</p>
+                <div
+                  className="relative rounded-xl overflow-hidden"
+                  style={{
+                    backgroundColor: '#f1f5f9',
+                    aspectRatio: '16/9',
+                    maxHeight: '320px',
+                  }}
+                >
+                  {previewUrl ? (
+                    <div className="relative w-full h-full group">
+                      <img
+                        src={previewUrl}
+                        alt="預覽"
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between">
+                          <span className="px-3 py-1.5 rounded-lg text-sm font-medium" style={{ backgroundColor: '#3b82f6', color: '#ffffff' }}>
+                            新圖片預覽
+                          </span>
+                          <button
+                            onClick={cancelPreview}
+                            className="p-2 rounded-lg transition-all"
+                            style={{ backgroundColor: 'rgba(255,255,255,0.9)', color: '#374151' }}
+                          >
+                            <X size={18} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : currentImage && !isNewSlot ? (
+                    <div className="relative w-full h-full">
+                      <img
+                        src={currentImage.url}
+                        alt={currentImage.alt_text || "輪播圖片"}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute bottom-0 left-0 right-0 p-4" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.6), transparent)' }}>
+                        <span className="text-white text-sm font-medium">
+                          {currentImage.alt_text || `輪播 ${activeTab + 1}`}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center gap-3">
+                      <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ backgroundColor: '#e2e8f0' }}>
+                        <Image size={32} style={{ color: '#94a3b8' }} />
+                      </div>
+                      <p style={{ color: '#94a3b8' }}>尚未選擇圖片</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 上傳區域 */}
+              <div className="space-y-4">
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -376,31 +387,38 @@ export function HeroImageManager({ onLogout }: HeroImageManagerProps) {
 
                 <label
                   htmlFor="imageUpload"
-                  className="flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 cursor-pointer transition-all"
+                  className="flex items-center justify-center gap-3 w-full py-4 rounded-xl cursor-pointer transition-all"
+                  style={{
+                    border: '2px dashed #cbd5e1',
+                    backgroundColor: '#f8fafc',
+                    color: '#64748b',
+                  }}
                 >
-                  <Upload size={18} />
-                  <span className="text-sm">上傳圖片</span>
+                  <Upload size={20} />
+                  <span className="font-medium">點擊上傳圖片</span>
                 </label>
 
                 {/* 格式說明 */}
-                <div className="text-xs text-gray-400 space-y-0.5">
-                  <p>• 圖片格式 JPG、JPEG、PNG</p>
-                  <p>• 檔案最大不能超過 5 MB</p>
+                <div className="flex items-center gap-6 text-sm" style={{ color: '#94a3b8' }}>
+                  <span>• 支援 JPG、PNG、WebP</span>
+                  <span>• 最大 5 MB</span>
+                  <span>• 建議比例 16:9</span>
                 </div>
 
                 {/* 操作按鈕 */}
                 {selectedFile && (
-                  <div className="flex gap-2 pt-2">
+                  <div className="flex gap-3 pt-2">
                     {isNewSlot ? (
                       <button
                         onClick={handleUpload}
                         disabled={isUploading}
-                        className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm font-medium"
+                        className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium transition-all disabled:opacity-50"
+                        style={{ backgroundColor: '#3b82f6', color: '#ffffff' }}
                       >
                         {isUploading ? (
-                          <RefreshCw size={16} className="animate-spin" />
+                          <RefreshCw size={18} className="animate-spin" />
                         ) : (
-                          <Check size={16} />
+                          <Check size={18} />
                         )}
                         <span>{isUploading ? "上傳中..." : "確認上傳"}</span>
                       </button>
@@ -408,12 +426,13 @@ export function HeroImageManager({ onLogout }: HeroImageManagerProps) {
                       <button
                         onClick={handleReplaceImage}
                         disabled={isUploading}
-                        className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50 transition-colors text-sm font-medium"
+                        className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium transition-all disabled:opacity-50"
+                        style={{ backgroundColor: '#f97316', color: '#ffffff' }}
                       >
                         {isUploading ? (
-                          <RefreshCw size={16} className="animate-spin" />
+                          <RefreshCw size={18} className="animate-spin" />
                         ) : (
-                          <Check size={16} />
+                          <Check size={18} />
                         )}
                         <span>{isUploading ? "替換中..." : "確認替換"}</span>
                       </button>
@@ -421,7 +440,8 @@ export function HeroImageManager({ onLogout }: HeroImageManagerProps) {
                     <button
                       onClick={cancelPreview}
                       disabled={isUploading}
-                      className="px-4 py-2.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 disabled:opacity-50 transition-colors text-sm"
+                      className="px-6 py-3 rounded-xl font-medium transition-all disabled:opacity-50"
+                      style={{ backgroundColor: '#f1f5f9', color: '#64748b' }}
                     >
                       取消
                     </button>
@@ -433,18 +453,23 @@ export function HeroImageManager({ onLogout }: HeroImageManagerProps) {
                   <button
                     onClick={handleDelete}
                     disabled={isLoading}
-                    className="w-full py-2.5 text-red-500 border border-red-200 rounded-lg hover:bg-red-50 disabled:opacity-50 transition-colors text-sm"
+                    className="w-full py-3 rounded-xl font-medium transition-all disabled:opacity-50"
+                    style={{
+                      backgroundColor: '#fef2f2',
+                      color: '#dc2626',
+                      border: '1px solid #fecaca',
+                    }}
                   >
                     刪除此輪播圖
                   </button>
                 )}
               </div>
             </div>
+          </div>
 
-            {/* 提示訊息 */}
-            <div className="mt-4 text-xs text-gray-400 text-center">
-              輪播圖會自動在首頁顯示，每 5 秒切換一次
-            </div>
+          {/* 底部提示 */}
+          <div className="px-6 py-4 text-center text-sm" style={{ borderTop: '1px solid #e2e8f0', backgroundColor: '#f8fafc', color: '#94a3b8' }}>
+            輪播圖會自動在首頁顯示，每 5 秒切換一次
           </div>
         </div>
       </main>
