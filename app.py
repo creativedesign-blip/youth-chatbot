@@ -358,6 +358,31 @@ def ensure_schema() -> None:
             )
         )
 
+        # Check if hero_images table is empty, if so, seed with default image
+        count = conn.execute(text("SELECT COUNT(*) FROM hero_images")).scalar()
+        if count == 0:
+            # Load default hero image from public/images
+            default_image_path = os.path.join(BASE_DIR, "public", "images", "青年在咖啡館交流image.jpg")
+            if os.path.exists(default_image_path):
+                with open(default_image_path, "rb") as f:
+                    image_data = f.read()
+                conn.execute(
+                    text(
+                        """
+                        INSERT INTO hero_images (filename, content_type, image_data, alt_text, display_order, is_active)
+                        VALUES (:filename, :content_type, :image_data, :alt_text, :display_order, 1)
+                        """
+                    ),
+                    {
+                        "filename": "青年在咖啡館交流image.jpg",
+                        "content_type": "image/jpeg",
+                        "image_data": image_data,
+                        "alt_text": "青年在咖啡館交流",
+                        "display_order": 0
+                    }
+                )
+                logger.info("Seeded default hero image into database")
+
 
 ensure_schema()
 
