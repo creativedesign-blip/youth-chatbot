@@ -481,6 +481,8 @@ def get_hero_images():
 @app.get("/api/hero-images/<int:image_id>/data")
 def get_hero_image_data(image_id: int):
     """Serve hero image binary data."""
+    from urllib.parse import quote
+
     with engine.begin() as conn:
         row = conn.execute(
             text("SELECT image_data, content_type, filename FROM hero_images WHERE id = :id AND is_active = 1"),
@@ -490,12 +492,15 @@ def get_hero_image_data(image_id: int):
     if not row:
         abort(404)
 
+    # URL encode filename to handle non-ASCII characters
+    encoded_filename = quote(row["filename"])
+
     return Response(
         row["image_data"],
         mimetype=row["content_type"],
         headers={
             "Cache-Control": "public, max-age=86400",
-            "Content-Disposition": f'inline; filename="{row["filename"]}"'
+            "Content-Disposition": f"inline; filename*=UTF-8''{encoded_filename}"
         }
     )
 
