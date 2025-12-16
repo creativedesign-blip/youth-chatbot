@@ -38,6 +38,7 @@ COPY --from=frontend-builder /app/dist ./dist
 # 复制后端源代码
 COPY app.py gemini_service.py ./
 COPY rag_data ./rag_data/
+COPY public ./public/
 
 # 设置环境变量
 ENV PORT=8080

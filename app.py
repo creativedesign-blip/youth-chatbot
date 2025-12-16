@@ -6,6 +6,7 @@ import datetime
 import json
 import logging
 import os
+import re
 import secrets
 import uuid
 from pathlib import Path
@@ -358,30 +359,68 @@ def ensure_schema() -> None:
             )
         )
 
-        # Check if hero_images table is empty, if so, seed with default image
+        # Check if hero_images table is empty, if so, seed from index.html Hero Banner
         count = conn.execute(text("SELECT COUNT(*) FROM hero_images")).scalar()
         if count == 0:
-            # Load default hero image from public/images
-            default_image_path = os.path.join(BASE_DIR, "public", "images", "青年在咖啡館交流image.jpg")
-            if os.path.exists(default_image_path):
-                with open(default_image_path, "rb") as f:
-                    image_data = f.read()
-                conn.execute(
-                    text(
-                        """
-                        INSERT INTO hero_images (filename, content_type, image_data, alt_text, display_order, is_active)
-                        VALUES (:filename, :content_type, :image_data, :alt_text, :display_order, 1)
-                        """
-                    ),
-                    {
-                        "filename": "青年在咖啡館交流image.jpg",
-                        "content_type": "image/jpeg",
-                        "image_data": image_data,
-                        "alt_text": "青年在咖啡館交流",
-                        "display_order": 0
-                    }
+            # Parse dist/index.html to find Hero Banner images
+            index_path = os.path.join(BASE_DIR, "dist", "index.html")
+            if os.path.exists(index_path):
+                with open(index_path, "r", encoding="utf-8") as f:
+                    html_content = f.read()
+
+                # Extract Hero Banner section (<div class="hero-slides">...</header>)
+                hero_match = re.search(
+                    r'<div class="hero-slides[^"]*"[^>]*>(.*?)</header>',
+                    html_content, re.DOTALL
                 )
-                logger.info("Seeded default hero image into database")
+                if hero_match:
+                    hero_content = hero_match.group(1)
+
+                    # Extract all <img> src and alt attributes
+                    img_pattern = r'<img[^>]+src="([^"]+)"[^>]*alt="([^"]*)"'
+                    images = re.findall(img_pattern, hero_content)
+
+                    # Content type mapping
+                    content_type_map = {
+                        '.jpg': 'image/jpeg',
+                        '.jpeg': 'image/jpeg',
+                        '.png': 'image/png',
+                        '.webp': 'image/webp',
+                        '.gif': 'image/gif'
+                    }
+
+                    # Import each image to database
+                    for order, (src, alt_text) in enumerate(images):
+                        filename = os.path.basename(src)
+                        # src: /images/xxx.jpg → public/images/xxx.jpg
+                        image_path = os.path.join(BASE_DIR, "public", src.lstrip("/"))
+
+                        if os.path.exists(image_path):
+                            ext = os.path.splitext(filename)[1].lower()
+                            content_type = content_type_map.get(ext, 'image/jpeg')
+
+                            with open(image_path, "rb") as f:
+                                image_data = f.read()
+
+                            conn.execute(
+                                text(
+                                    """
+                                    INSERT INTO hero_images (filename, content_type, image_data, alt_text, display_order, is_active)
+                                    VALUES (:filename, :content_type, :image_data, :alt_text, :display_order, 1)
+                                    """
+                                ),
+                                {
+                                    "filename": filename,
+                                    "content_type": content_type,
+                                    "image_data": image_data,
+                                    "alt_text": alt_text,
+                                    "display_order": order
+                                }
+                            )
+                            logger.info(f"Seeded hero image from index.html: {filename} (order: {order})")
+
+                    if images:
+                        logger.info(f"Seeded {len(images)} hero images from index.html Hero Banner")
 
 
 ensure_schema()
