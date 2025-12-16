@@ -30,6 +30,7 @@ from sqlalchemy import create_engine, event, text
 from sqlalchemy.engine import Engine
 
 from functools import wraps
+import base64
 
 load_dotenv()  # Load .env
 load_dotenv(".env.local")  # Override with .env.local if exists
@@ -41,16 +42,6 @@ from gemini_service import (
     get_rag_store_name,
     generate_with_rag_stream,
 )
-USE_MOCK_GCS = os.getenv("USE_MOCK_GCS", "0") in {"1", "true", "True"}
-
-if USE_MOCK_GCS:
-    from local import mock_gcs_service as mock_gcs
-else:
-    from gcs_service import (
-        init_gcs_client,
-        upload_hero_image as gcs_upload_hero_image,
-        delete_hero_image as gcs_delete_hero_image,
-    )
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DIST_DIR = os.path.join(BASE_DIR, "dist")
@@ -340,14 +331,15 @@ def ensure_schema() -> None:
                 """
             )
         )
-        # Hero Images table for banner carousel
+        # Hero Images table for banner carousel (stores image data in DB)
         conn.execute(
             text(
                 """
                 CREATE TABLE IF NOT EXISTS hero_images (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    gcs_object_name TEXT NOT NULL UNIQUE,
-                    gcs_public_url TEXT NOT NULL,
+                    filename TEXT NOT NULL,
+                    content_type TEXT NOT NULL DEFAULT 'image/jpeg',
+                    image_data BLOB NOT NULL,
                     display_order INTEGER DEFAULT 0,
                     alt_text TEXT,
                     is_active INTEGER DEFAULT 1,
@@ -385,26 +377,6 @@ def initialize_gemini_rag():
 
 
 initialize_gemini_rag()
-
-# Initialize GCS client (or local mock) at startup
-if USE_MOCK_GCS:
-    LOCAL_GCS_DIR = Path(os.getenv("LOCAL_GCS_DIR") or ASSET_LOCAL_DIR)
-
-    def init_gcs_client() -> bool:
-        mock_gcs.init_local_bucket(LOCAL_GCS_DIR)
-        return True
-
-    def gcs_upload_hero_image(file_data: bytes, filename: str, content_type: str = "image/jpeg"):
-        success, object_name, _ = mock_gcs.upload_hero_image(
-            file_data, filename, content_type=content_type, base_dir=LOCAL_GCS_DIR
-        )
-        public_url = f"{ASSET_ROUTE_PREFIX}/{object_name}"
-        return success, object_name, public_url
-
-    def gcs_delete_hero_image(object_name: str) -> bool:
-        return mock_gcs.delete_hero_image(object_name, base_dir=LOCAL_GCS_DIR)
-
-init_gcs_client()
 
 
 # ========== Admin Authentication ==========
@@ -461,7 +433,7 @@ def get_hero_images():
         rows = conn.execute(
             text(
                 """
-                SELECT id, gcs_public_url as url, alt_text, display_order
+                SELECT id, alt_text, display_order
                 FROM hero_images
                 WHERE is_active = 1
                 ORDER BY display_order ASC
@@ -469,8 +441,38 @@ def get_hero_images():
             )
         ).mappings().all()
 
-    images = [dict(row) for row in rows]
+    # Build URL pointing to the image data endpoint
+    images = []
+    for row in rows:
+        images.append({
+            "id": row["id"],
+            "url": f"/api/hero-images/{row['id']}/data",
+            "alt_text": row["alt_text"],
+            "display_order": row["display_order"]
+        })
     return jsonify({"success": True, "images": images})
+
+
+@app.get("/api/hero-images/<int:image_id>/data")
+def get_hero_image_data(image_id: int):
+    """Serve hero image binary data."""
+    with engine.begin() as conn:
+        row = conn.execute(
+            text("SELECT image_data, content_type, filename FROM hero_images WHERE id = :id AND is_active = 1"),
+            {"id": image_id}
+        ).mappings().first()
+
+    if not row:
+        abort(404)
+
+    return Response(
+        row["image_data"],
+        mimetype=row["content_type"],
+        headers={
+            "Cache-Control": "public, max-age=86400",
+            "Content-Disposition": f'inline; filename="{row["filename"]}"'
+        }
+    )
 
 
 @app.get("/api/admin/hero-images")
@@ -481,7 +483,7 @@ def admin_get_hero_images():
         rows = conn.execute(
             text(
                 """
-                SELECT id, gcs_object_name, gcs_public_url as url, alt_text,
+                SELECT id, filename, content_type, alt_text,
                        display_order, is_active, created_at, updated_at
                 FROM hero_images
                 ORDER BY display_order ASC
@@ -489,14 +491,26 @@ def admin_get_hero_images():
             )
         ).mappings().all()
 
-    images = [dict(row) for row in rows]
+    # Build URL pointing to the image data endpoint
+    images = []
+    for row in rows:
+        images.append({
+            "id": row["id"],
+            "url": f"/api/hero-images/{row['id']}/data",
+            "filename": row["filename"],
+            "alt_text": row["alt_text"],
+            "display_order": row["display_order"],
+            "is_active": row["is_active"],
+            "created_at": row["created_at"],
+            "updated_at": row["updated_at"]
+        })
     return jsonify({"success": True, "images": images})
 
 
 @app.post("/api/admin/hero-images")
 @admin_required
 def admin_upload_hero_image():
-    """Upload a new hero image."""
+    """Upload a new hero image (stores in database)."""
     if "file" not in request.files:
         return jsonify({"success": False, "error": "未提供檔案"}), 400
 
@@ -514,18 +528,10 @@ def admin_upload_hero_image():
     if len(file_data) > 5 * 1024 * 1024:
         return jsonify({"success": False, "error": "檔案大小不能超過 5MB"}), 400
 
-    # Upload to GCS
-    success, object_name, public_url = gcs_upload_hero_image(
-        file_data, file.filename, file.content_type
-    )
-
-    if not success:
-        return jsonify({"success": False, "error": "上傳失敗"}), 500
-
     # Get alt_text from form
     alt_text = request.form.get("alt_text", "")
 
-    # Get next display order
+    # Get next display order and insert into database
     with engine.begin() as conn:
         result = conn.execute(
             text("SELECT COALESCE(MAX(display_order), -1) + 1 as next_order FROM hero_images")
@@ -537,22 +543,21 @@ def admin_upload_hero_image():
             text("SELECT COUNT(*) as count FROM hero_images")
         ).mappings().first()
         if count_result and count_result["count"] >= 8:
-            # Delete the uploaded file since we can't add more
-            gcs_delete_hero_image(object_name)
             return jsonify({"success": False, "error": "最多只能上傳 8 張圖片"}), 400
 
-        # Insert into database
+        # Insert image data into database
         now = utcnow()
         conn.execute(
             text(
                 """
-                INSERT INTO hero_images (gcs_object_name, gcs_public_url, alt_text, display_order, created_at, updated_at)
-                VALUES (:object_name, :url, :alt_text, :order, :now, :now)
+                INSERT INTO hero_images (filename, content_type, image_data, alt_text, display_order, created_at, updated_at)
+                VALUES (:filename, :content_type, :image_data, :alt_text, :order, :now, :now)
                 """
             ),
             {
-                "object_name": object_name,
-                "url": public_url,
+                "filename": file.filename,
+                "content_type": file.content_type,
+                "image_data": file_data,
                 "alt_text": alt_text,
                 "order": next_order,
                 "now": now,
@@ -561,34 +566,36 @@ def admin_upload_hero_image():
 
         # Get the inserted image
         inserted = conn.execute(
-            text("SELECT id, gcs_public_url as url, alt_text, display_order FROM hero_images WHERE gcs_object_name = :name"),
-            {"name": object_name}
+            text("SELECT id, alt_text, display_order FROM hero_images WHERE display_order = :order"),
+            {"order": next_order}
         ).mappings().first()
 
-    return jsonify({
-        "success": True,
-        "image": dict(inserted) if inserted else None
-    })
+    if inserted:
+        return jsonify({
+            "success": True,
+            "image": {
+                "id": inserted["id"],
+                "url": f"/api/hero-images/{inserted['id']}/data",
+                "alt_text": inserted["alt_text"],
+                "display_order": inserted["display_order"]
+            }
+        })
+    return jsonify({"success": False, "error": "上傳失敗"}), 500
 
 
 @app.delete("/api/admin/hero-images/<int:image_id>")
 @admin_required
 def admin_delete_hero_image(image_id: int):
-    """Delete a hero image."""
+    """Delete a hero image from database."""
     with engine.begin() as conn:
-        # Get the image first
+        # Check if image exists
         image = conn.execute(
-            text("SELECT gcs_object_name FROM hero_images WHERE id = :id"),
+            text("SELECT id FROM hero_images WHERE id = :id"),
             {"id": image_id}
         ).mappings().first()
 
         if not image:
             return jsonify({"success": False, "error": "圖片不存在"}), 404
-
-        # Delete from GCS first; if it fails, do not remove DB record to avoid drift
-        deleted = gcs_delete_hero_image(image["gcs_object_name"])
-        if not deleted:
-            return jsonify({"success": False, "error": "刪除雲端檔案失敗，請稍後再試"}), 502
 
         # Delete from database
         conn.execute(

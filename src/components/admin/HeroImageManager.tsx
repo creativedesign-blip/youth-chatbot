@@ -202,7 +202,7 @@ export function HeroImageManager({ onLogout }: HeroImageManagerProps) {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={fetchImages}
+              onClick={() => fetchImages()}
               disabled={isLoading}
               className="p-2 text-gray-500 hover:bg-gray-100 rounded-full disabled:opacity-50"
               title="重新整理"
