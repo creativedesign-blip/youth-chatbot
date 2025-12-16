@@ -202,15 +202,6 @@ export function HeroImageManager({ onLogout }: HeroImageManagerProps) {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={handleAddNewSlot}
-              disabled={!canAddMore}
-              style={{ backgroundColor: '#2563eb', color: 'white' }}
-              className="flex items-center gap-1 px-3 py-1.5 text-sm rounded-md hover:opacity-90 disabled:opacity-50"
-            >
-              <Plus size={16} />
-              <span>新增輪播</span>
-            </button>
-            <button
               onClick={() => fetchImages()}
               disabled={isLoading}
               className="p-2 text-gray-500 hover:bg-gray-100 rounded-full disabled:opacity-50"
@@ -290,8 +281,8 @@ export function HeroImageManager({ onLogout }: HeroImageManagerProps) {
                 </button>
               )}
 
-              {/* 新增按鈕 */}
-              {canAddMore && !isNewSlot && (
+              {/* 新增按鈕 - 當有已上傳圖片且未在新增模式時顯示 */}
+              {canAddMore && images.length > 0 && !isNewSlot && (
                 <button
                   onClick={handleAddNewSlot}
                   style={{
