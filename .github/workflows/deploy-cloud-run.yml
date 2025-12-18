@@ -2,16 +2,18 @@ name: Deploy to GCP Cloud Run
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "develop" ]
 
 env:
   PROJECT_ID: crm-platform-479508
-  SERVICE: chatbot-poc-youth
   REGION: asia-east1
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
+    env:
+      SERVICE: ${{ github.ref_name == 'main' && 'chatbot-poc-youth' || 'chatbot-poc-youth-staging' }}
 
     steps:
       - name: Checkout code
@@ -41,3 +43,9 @@ jobs:
             --region ${{ env.REGION }} \
             --platform managed \
             --allow-unauthenticated
+
+      - name: Show deployment info
+        run: |
+          echo "✅ Deployed to: ${{ env.SERVICE }}"
+          echo "📌 Branch: ${{ github.ref_name }}"
+          echo "🔗 Region: ${{ env.REGION }}"
