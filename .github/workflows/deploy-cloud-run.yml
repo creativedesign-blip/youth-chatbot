@@ -12,12 +12,17 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
-    env:
-      SERVICE: ${{ github.ref_name == 'main' && 'chatbot-poc-youth' || 'chatbot-poc-youth-staging' }}
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Set SERVICE name
+        run: |
+          if [ "${{ github.ref_name }}" == "main" ]; then
+            echo "SERVICE=chatbot-poc-youth" >> $GITHUB_ENV
+          else
+            echo "SERVICE=chatbot-poc-youth-staging" >> $GITHUB_ENV
+          fi
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
