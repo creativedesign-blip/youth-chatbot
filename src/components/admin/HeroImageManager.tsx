@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { LogOut, RefreshCw, Plus, Upload, X, Check, Image } from "lucide-react";
+import { LogOut, RefreshCw, Plus, Upload, X, Check, Image, AlertTriangle } from "lucide-react";
 import { adminApi, HeroImage } from "../../services/adminApi";
 
 interface HeroImageManagerProps {
@@ -18,6 +18,9 @@ export function HeroImageManager({ onLogout }: HeroImageManagerProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // 確認彈窗狀態
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<'upload' | 'replace' | null>(null);
 
   const fetchImages = useCallback(async (selectLast = false) => {
     setIsLoading(true);
@@ -82,7 +85,41 @@ export function HeroImageManager({ onLogout }: HeroImageManagerProps) {
     setError("");
   };
 
-  const handleUpload = async () => {
+  // 顯示上傳確認彈窗
+  const handleUploadClick = () => {
+    if (!selectedFile) return;
+    setConfirmAction('upload');
+    setShowConfirmModal(true);
+  };
+
+  // 顯示替換確認彈窗
+  const handleReplaceClick = () => {
+    if (!selectedFile || !currentImage) return;
+    setConfirmAction('replace');
+    setShowConfirmModal(true);
+  };
+
+  // 確認後執行上傳
+  const handleConfirmAction = async () => {
+    setShowConfirmModal(false);
+
+    if (confirmAction === 'upload') {
+      await executeUpload();
+    } else if (confirmAction === 'replace') {
+      await executeReplace();
+    }
+
+    setConfirmAction(null);
+  };
+
+  // 取消確認
+  const handleCancelConfirm = () => {
+    setShowConfirmModal(false);
+    setConfirmAction(null);
+  };
+
+  // 實際執行上傳
+  const executeUpload = async () => {
     if (!selectedFile) return;
 
     setIsUploading(true);
@@ -109,7 +146,8 @@ export function HeroImageManager({ onLogout }: HeroImageManagerProps) {
     }
   };
 
-  const handleReplaceImage = async () => {
+  // 實際執行替換
+  const executeReplace = async () => {
     if (!selectedFile || !currentImage) return;
 
     setIsUploading(true);
@@ -410,7 +448,7 @@ export function HeroImageManager({ onLogout }: HeroImageManagerProps) {
                   <div className="flex gap-3 pt-2">
                     {isNewSlot ? (
                       <button
-                        onClick={handleUpload}
+                        onClick={handleUploadClick}
                         disabled={isUploading}
                         className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium transition-all disabled:opacity-50"
                         style={{ backgroundColor: '#3b82f6', color: '#ffffff' }}
@@ -420,11 +458,11 @@ export function HeroImageManager({ onLogout }: HeroImageManagerProps) {
                         ) : (
                           <Check size={18} />
                         )}
-                        <span>{isUploading ? "上傳中..." : "確認上傳"}</span>
+                        <span>{isUploading ? "上傳中..." : "發布上傳"}</span>
                       </button>
                     ) : (
                       <button
-                        onClick={handleReplaceImage}
+                        onClick={handleReplaceClick}
                         disabled={isUploading}
                         className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium transition-all disabled:opacity-50"
                         style={{ backgroundColor: '#f97316', color: '#ffffff' }}
@@ -434,7 +472,7 @@ export function HeroImageManager({ onLogout }: HeroImageManagerProps) {
                         ) : (
                           <Check size={18} />
                         )}
-                        <span>{isUploading ? "替換中..." : "確認替換"}</span>
+                        <span>{isUploading ? "替換中..." : "發布替換"}</span>
                       </button>
                     )}
                     <button
@@ -473,6 +511,86 @@ export function HeroImageManager({ onLogout }: HeroImageManagerProps) {
           </div>
         </div>
       </main>
+
+      {/* 確認發布彈窗 */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* 背景遮罩 */}
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={handleCancelConfirm}
+          />
+
+          {/* 彈窗內容 */}
+          <div
+            className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden"
+            style={{ animation: 'fadeIn 0.2s ease-out' }}
+          >
+            {/* 頂部警告條 */}
+            <div className="px-6 py-4 flex items-center gap-3" style={{ backgroundColor: '#fef3c7' }}>
+              <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: '#f59e0b' }}>
+                <AlertTriangle size={20} style={{ color: '#ffffff' }} />
+              </div>
+              <div>
+                <h3 className="font-semibold" style={{ color: '#92400e' }}>
+                  確認{confirmAction === 'upload' ? '上傳' : '替換'}
+                </h3>
+                <p className="text-sm" style={{ color: '#a16207' }}>
+                  請確認圖片無誤後再發布
+                </p>
+              </div>
+            </div>
+
+            {/* 預覽圖片 */}
+            <div className="px-6 py-4">
+              <p className="text-sm font-medium mb-3" style={{ color: '#374151' }}>即將發布的圖片：</p>
+              {previewUrl && (
+                <div className="rounded-xl overflow-hidden" style={{ aspectRatio: '16/9', backgroundColor: '#f1f5f9' }}>
+                  <img
+                    src={previewUrl}
+                    alt="預覽"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
+              <p className="mt-3 text-sm" style={{ color: '#64748b' }}>
+                {confirmAction === 'upload'
+                  ? `此圖片將新增為輪播 ${images.length + 1}，並立即在首頁顯示。`
+                  : `此圖片將替換輪播 ${activeTab + 1}，並立即在首頁顯示。`
+                }
+              </p>
+            </div>
+
+            {/* 按鈕區 */}
+            <div className="px-6 py-4 flex gap-3" style={{ backgroundColor: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
+              <button
+                onClick={handleCancelConfirm}
+                className="flex-1 py-3 rounded-xl font-medium transition-all"
+                style={{ backgroundColor: '#e2e8f0', color: '#475569' }}
+              >
+                返回修改
+              </button>
+              <button
+                onClick={handleConfirmAction}
+                className="flex-1 py-3 rounded-xl font-medium transition-all"
+                style={{
+                  backgroundColor: confirmAction === 'upload' ? '#3b82f6' : '#f97316',
+                  color: '#ffffff'
+                }}
+              >
+                確認發布
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: scale(0.95); }
+          to { opacity: 1; transform: scale(1); }
+        }
+      `}</style>
     </div>
   );
 }

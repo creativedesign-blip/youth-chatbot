@@ -26,7 +26,7 @@ interface Message {
 export function FloatingChatbot() {
   const [isMinimized, setIsMinimized] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
-  const [isClosed, setIsClosed] = useState(true); // 預設關閉
+  const [isClosed, setIsClosed] = useState(false); // 預設開啟
   const [position, setPosition] = useState({ x: 0, y: 0 }); // 改為 x, y 座標
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -120,6 +120,11 @@ export function FloatingChatbot() {
 
   // 計算聊天窗口的尺寸和位置
   const getChatbotDimensions = useCallback(() => {
+    // 響應式尺寸：手機上使用較大比例
+    const isMobile = window.innerWidth < 640;
+    const baseWidth = isMobile ? Math.min(window.innerWidth - 32, 400) : 400;
+    const baseHeight = isMobile ? Math.min(window.innerHeight - 100, 600) : 500;
+
     if (isMaximized) {
       return {
         width: window.innerWidth - 40,
@@ -136,10 +141,10 @@ export function FloatingChatbot() {
       };
     } else {
       return {
-        width: 400,
-        height: 500,
-        x: position.x || window.innerWidth - 400 - 10,
-        y: position.y || window.innerHeight - 500 - 24
+        width: baseWidth,
+        height: baseHeight,
+        x: position.x || window.innerWidth - baseWidth - 10,
+        y: position.y || window.innerHeight - baseHeight - 24
       };
     }
   }, [isMaximized, isMinimized, position]);

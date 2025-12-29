@@ -7,6 +7,7 @@ on:
 env:
   PROJECT_ID: crm-platform-479508
   REGION: asia-east1
+  BASE_SERVICE: chatbot-poc-youth
 
 jobs:
   deploy:
@@ -21,9 +22,9 @@ jobs:
       - name: Set SERVICE name
         run: |
           if [ "${{ github.ref_name }}" == "main" ]; then
-            echo "SERVICE=chatbot-poc-youth" >> $GITHUB_ENV
+            echo "SERVICE=${{ env.BASE_SERVICE }}" >> $GITHUB_ENV
           else
-            echo "SERVICE=chatbot-poc-youth-staging" >> $GITHUB_ENV
+            echo "SERVICE=${{ env.BASE_SERVICE }}-staging" >> $GITHUB_ENV
           fi
 
       - name: Authenticate to Google Cloud

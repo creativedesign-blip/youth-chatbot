@@ -29,15 +29,6 @@
                     fontFamily: {
                         sans: ['Noto Sans TC', 'sans-serif'],
                         serif: ['Noto Serif TC', 'serif']
-                    },
-                    animation: {
-                        'marquee': 'marquee 20s linear infinite',
-                    },
-                    keyframes: {
-                        marquee: {
-                            '0%': { transform: 'translateX(100%)' },
-                            '100%': { transform: 'translateX(-100%)' }
-                        }
                     }
                 }
             }
@@ -69,24 +60,6 @@
         }
         ::-webkit-scrollbar-thumb:hover {
             background: #134A73;
-        }
-        
-        /* 跑馬燈容器 */
-        .marquee-container {
-            overflow: hidden;
-            white-space: nowrap;
-            position: relative;
-            width: 100%;
-        }
-        
-        /* 跑馬燈動畫 */
-        @keyframes marquee {
-            0% { transform: translateX(100%); }
-            100% { transform: translateX(-100%); }
-        }
-        .marquee-content {
-            display: inline-block;
-            animation: marquee 20s linear infinite;
         }
         
         /* 聊天機器人動畫 */
@@ -195,17 +168,6 @@
             }
         }
     </style>
-
-    <!-- 跑馬燈 -->
-    <div class="bg-primary bg-opacity-10 py-3 px-4">
-        <div class="marquee-container">
-            <div class="marquee-content">
-                <span class="text-primary font-medium text-lg">
-                    AI × 公共參與 | 下班解憂所 | 下班也能公共參與的療癒實驗計畫 | AI × 公共參與 | 下班解憂所 | 下班也能公共參與的療癒實驗計畫 | 
-                </span>
-            </div>
-        </div>
-    </div>
 
     <!-- 核心理念 -->
     <section id="about" class="py-16 px-4 bg-white">
