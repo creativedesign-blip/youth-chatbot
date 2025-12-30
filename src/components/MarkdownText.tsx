@@ -129,6 +129,19 @@ export function MarkdownText({ children, className, style }: MarkdownTextProps) 
           em: ({ node, ...props }) => (
             <em className="italic" {...props} />
           ),
+          // 圖片樣式 - 響應式處理
+          img: ({ node, ...props }) => (
+            <img
+              {...props}
+              className="max-w-full h-auto rounded-lg my-2"
+              style={{
+                maxWidth: '100%',
+                height: 'auto',
+                objectFit: 'contain'
+              }}
+              loading="lazy"
+            />
+          ),
         }}
       >
         {children}

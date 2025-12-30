@@ -122,8 +122,8 @@ export function FloatingChatbot() {
   const getChatbotDimensions = useCallback(() => {
     // 響應式尺寸：手機上使用較大比例
     const isMobile = window.innerWidth < 640;
-    const baseWidth = isMobile ? Math.min(window.innerWidth - 32, 400) : 400;
-    const baseHeight = isMobile ? Math.min(window.innerHeight - 100, 600) : 500;
+    const baseWidth = isMobile ? Math.min(window.innerWidth - 16, 400) : 400;
+    const baseHeight = isMobile ? Math.min(window.innerHeight - 80, 600) : 500;
 
     if (isMaximized) {
       return {
@@ -133,18 +133,27 @@ export function FloatingChatbot() {
         y: 20
       };
     } else if (isMinimized) {
+      const minWidth = isMobile ? Math.min(280, window.innerWidth - 16) : 320;
       return {
-        width: 320,
+        width: minWidth,
         height: 48,
-        x: position.x || window.innerWidth - 320 - 24,
+        x: position.x || (isMobile ? 8 : window.innerWidth - minWidth - 24),
         y: position.y || window.innerHeight - 48 - 24
       };
     } else {
+      // 手機版：置中顯示，桌面版：靠右下角
+      const defaultX = isMobile
+        ? Math.max(8, (window.innerWidth - baseWidth) / 2)
+        : window.innerWidth - baseWidth - 10;
+      const defaultY = isMobile
+        ? Math.max(40, (window.innerHeight - baseHeight) / 2)
+        : window.innerHeight - baseHeight - 24;
+
       return {
         width: baseWidth,
         height: baseHeight,
-        x: position.x || window.innerWidth - baseWidth - 10,
-        y: position.y || window.innerHeight - baseHeight - 24
+        x: position.x || defaultX,
+        y: position.y || defaultY
       };
     }
   }, [isMaximized, isMinimized, position]);
