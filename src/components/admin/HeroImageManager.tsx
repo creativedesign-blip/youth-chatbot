@@ -517,14 +517,22 @@ export function HeroImageManager({ onLogout }: HeroImageManagerProps) {
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           {/* 背景遮罩 */}
           <div
-            className="absolute inset-0 bg-black/50"
+            className="absolute inset-0"
+            style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 0 }}
             onClick={handleCancelConfirm}
           />
 
           {/* 彈窗內容 */}
           <div
-            className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden"
-            style={{ animation: 'fadeIn 0.2s ease-out' }}
+            className="bg-white rounded-2xl shadow-2xl overflow-hidden"
+            style={{
+              animation: 'fadeIn 0.2s ease-out',
+              zIndex: 10,
+              position: 'relative',
+              width: '90vw',
+              maxWidth: '700px',
+              margin: '0 16px'
+            }}
           >
             {/* 頂部警告條 */}
             <div className="px-6 py-4 flex items-center gap-3" style={{ backgroundColor: '#fef3c7' }}>
@@ -541,15 +549,24 @@ export function HeroImageManager({ onLogout }: HeroImageManagerProps) {
               </div>
             </div>
 
-            {/* 預覽圖片 */}
+            {/* 預覽圖片 - 模擬首頁 Hero Banner 顯示效果 */}
             <div className="px-6 py-4">
-              <p className="text-sm font-medium mb-3" style={{ color: '#374151' }}>即將發布的圖片：</p>
+              <p className="text-sm font-medium mb-2" style={{ color: '#374151' }}>首頁顯示預覽：</p>
+              <p className="text-xs mb-3" style={{ color: '#94a3b8' }}>以下為圖片在首頁 Hero 區域的實際顯示比例（1920×600）</p>
               {previewUrl && (
-                <div className="rounded-xl overflow-hidden" style={{ aspectRatio: '16/9', backgroundColor: '#f1f5f9' }}>
+                <div
+                  className="rounded-xl overflow-hidden border"
+                  style={{
+                    aspectRatio: '1920/600',
+                    backgroundColor: '#f1f5f9',
+                    borderColor: '#e2e8f0',
+                    width: '100%'
+                  }}
+                >
                   <img
                     src={previewUrl}
                     alt="預覽"
-                    className="w-full h-full object-cover"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   />
                 </div>
               )}
